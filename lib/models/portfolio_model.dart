@@ -21,23 +21,23 @@ class PortfolioData {
 
 class PortfolioHolding {
   final String fullSecurityName;
-  final String localCurrencyCode;
   final String localCurrencyName;
   final String portfolioCode;
   final String reportDate;
-  final String reportingCurrencyCode;
+  final String countryName;
   final String assetClassName;
   final String localCurrencyISOCode;
   final double marketValue;
+  final String sector;
 
   PortfolioHolding({
+    required this.sector,
+    required this.countryName,
     required this.fullSecurityName,
-    required this.localCurrencyCode,
     required this.localCurrencyName,
     required this.portfolioCode,
     required this.reportDate,
     required this.localCurrencyISOCode,
-    required this.reportingCurrencyCode,
    
     required this.assetClassName,
  
@@ -47,11 +47,12 @@ class PortfolioHolding {
   factory PortfolioHolding.fromJson(Map<String, dynamic> json) {
     return PortfolioHolding(
       fullSecurityName: json['FullSecurityName'] ?? '',
-      localCurrencyCode: json['LocalCurrencyCode'] ?? '',
+            sector:json['IndSector'] ?? '',
+
+      countryName:json['CountryName'] ?? '',
       localCurrencyName: json['LocalCurrencyName'] ?? '',
       portfolioCode: json['PortfolioCode'] ?? '',
       reportDate: json['ReportDate'] ?? '',
-      reportingCurrencyCode: json['ReportingCurrencyCode'] ?? '',
       assetClassName: json['AssetClass'] ?? '',
       localCurrencyISOCode: json['LocalCurrencyISOCode'] ?? '',
       marketValue: (json['MarketValue'] as num?)?.toDouble() ?? 0.0,
