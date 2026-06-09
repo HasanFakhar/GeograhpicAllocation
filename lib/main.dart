@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
+import 'controllers/portfolio_controller.dart';
+import 'package:get/get.dart';
 
 void main() {
-  runApp(const MainApp());
+  Get.put(PortfolioController());
+  runApp(MainApp());
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+  MainApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    final mc = Get.find<PortfolioController>();
+
+    return MaterialApp(
       home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
+        body: GetBuilder<PortfolioController>(
+          builder: (mc) {
+            return Center(child: Text('total value ${mc.totalPortfolioValue}'));
+          },
         ),
       ),
     );
