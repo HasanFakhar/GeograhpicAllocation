@@ -2,10 +2,7 @@ class PortfolioData {
   final List<PortfolioHolding> holdings;
   final List<PortfolioSummary> summary;
 
-  PortfolioData({
-    required this.holdings,
-    required this.summary,
-  });
+  PortfolioData({required this.holdings, required this.summary});
 
   factory PortfolioData.fromJson(Map<String, dynamic> json) {
     return PortfolioData(
@@ -22,6 +19,7 @@ class PortfolioData {
 class PortfolioHolding {
   final String fullSecurityName;
   final String localCurrencyName;
+  final String localCurrencyCode;
   final String portfolioCode;
   final String reportDate;
   final String countryName;
@@ -29,33 +27,37 @@ class PortfolioHolding {
   final String localCurrencyISOCode;
   final double marketValue;
   final String sector;
+  final String securityTypeName;
 
   PortfolioHolding({
     required this.sector,
+    required this.securityTypeName,
     required this.countryName,
     required this.fullSecurityName,
     required this.localCurrencyName,
+    required this.localCurrencyCode,
     required this.portfolioCode,
     required this.reportDate,
     required this.localCurrencyISOCode,
-   
+
     required this.assetClassName,
- 
+
     required this.marketValue,
   });
 
   factory PortfolioHolding.fromJson(Map<String, dynamic> json) {
     return PortfolioHolding(
       fullSecurityName: json['FullSecurityName'] ?? '',
-            sector:json['IndSector'] ?? '',
-
-      countryName:json['CountryName'] ?? '',
+      securityTypeName: json['SecurityTypeName'] ?? '',
+      localCurrencyCode: json['LocalCurrencyCode'].toString().toUpperCase() ,
+      sector: json['IndSector'] ?? '',
+      countryName: json['CountryName'] ?? '',
       localCurrencyName: json['LocalCurrencyName'] ?? '',
       portfolioCode: json['PortfolioCode'] ?? '',
       reportDate: json['ReportDate'] ?? '',
       assetClassName: json['AssetClass'] ?? '',
       localCurrencyISOCode: json['LocalCurrencyISOCode'] ?? '',
-      marketValue: (json['MarketValue'] as num?)?.toDouble() ?? 0.0,
+      marketValue: (json['LocalMarketValue'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -64,10 +66,7 @@ class PortfolioSummary {
   final String columnValue;
   final double marketValue;
 
-  PortfolioSummary({
-    required this.columnValue,
-    required this.marketValue,
-  });
+  PortfolioSummary({required this.columnValue, required this.marketValue});
 
   factory PortfolioSummary.fromJson(Map<String, dynamic> json) {
     return PortfolioSummary(
@@ -75,4 +74,34 @@ class PortfolioSummary {
       marketValue: (json['MarketValue'] as num?)?.toDouble() ?? 0.0,
     );
   }
+}
+
+class AllocationItem {
+  final String code;
+  final String name;
+  final String subLabel;
+  final double allocationPct;
+  final double marketValue;
+  final String filterGroup;
+
+  const AllocationItem({
+    required this.code,
+    required this.name,
+    required this.subLabel,
+    required this.allocationPct,
+    required this.marketValue,
+    required this.filterGroup,
+  });
+}
+
+class FilterGroup {
+  final String label;
+  final double allocationPct;
+  final String groupKey;
+
+  const FilterGroup({
+    required this.label,
+    required this.allocationPct,
+    required this.groupKey,
+  });
 }

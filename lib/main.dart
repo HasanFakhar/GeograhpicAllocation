@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'controllers/portfolio_controller.dart';
 import 'package:get/get.dart';
+import 'widgets/geographic_asset_allocation.dart';
+import 'package:flutter/gestures.dart';
 
 void main() {
   Get.put(PortfolioController());
@@ -15,13 +17,16 @@ class MainApp extends StatelessWidget {
     final mc = Get.find<PortfolioController>();
 
     return MaterialApp(
-      home: Scaffold(
-        body: GetBuilder<PortfolioController>(
-          builder: (mc) {
-            return Center(child: Text('total value ${mc.totalPortfolioValue}'));
-          },
-        ),
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+        },
       ),
-    );
+      home: Scaffold(
+        body: PortfolioAllocationWidget()
+        ),
+      );
+    
   }
 }
