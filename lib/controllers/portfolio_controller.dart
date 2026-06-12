@@ -271,7 +271,7 @@ class PortfolioController extends GetxController {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return [
-      FilterGroup(label: labelAll, allocationPct: 100.0, groupKey: 'all'),
+      FilterGroup(selected: true, label: labelAll, allocationPct: 100.0, groupKey: 'all'),
       ...sortedGroups.map(
         (e) =>
             FilterGroup(label: e.key, allocationPct: e.value, groupKey: e.key),

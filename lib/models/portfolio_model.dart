@@ -98,8 +98,10 @@ class FilterGroup {
   final String label;
   final double allocationPct;
   final String groupKey;
+  bool selected ;
 
-  const FilterGroup({
+   FilterGroup({
+    this.selected = false,
     required this.label,
     required this.allocationPct,
     required this.groupKey,
