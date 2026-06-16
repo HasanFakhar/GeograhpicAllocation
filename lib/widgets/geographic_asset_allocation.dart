@@ -32,9 +32,7 @@ const List<Color> kDotColors = [
 
 Color dotColor(int idx) => kDotColors[idx % kDotColors.length];
 
-// ─────────────────────────────────────────────
-//  Static tab metadata (labels / chart types only)
-// ─────────────────────────────────────────────
+
 enum _Tab { region, assetClass, currency, sector }
 
 const _tabLabels = ['Region', 'Class', 'Currency', 'Sector'];
@@ -63,9 +61,6 @@ const _tabsubtitle = [
 // 'world' | 'donut' | 'bar' | 'treemap'
 const _tabChartTypes = ['world', 'donut', 'bar', 'treemap'];
 
-// ─────────────────────────────────────────────
-//  Currency symbol lookup (ISO → symbol)
-// ─────────────────────────────────────────────
 const Map<String, String> kCurrencySymbols = {
   'GBP': '£',
   'USD': '\$',
@@ -78,9 +73,7 @@ const Map<String, String> kCurrencySymbols = {
   'CAD': 'C\$',
 };
 
-// ─────────────────────────────────────────────
-//  Root widget
-// ─────────────────────────────────────────────
+
 class PortfolioAllocationWidget extends StatefulWidget {
   const PortfolioAllocationWidget({super.key});
 
@@ -100,7 +93,7 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
 
   void _onFilter(String g) => setState(() => _filter = g);
 
-  // ── Resolve live data from controller for the active tab ──────────────────
+
   List<AllocationItem> _items(PortfolioController c) {
     return switch (_Tab.values[_tabIndex]) {
       _Tab.region => c.getRegionItems(_filter),
@@ -195,9 +188,7 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
   }
 }
 
-// ─────────────────────────────────────────────
-//  Tab bar
-// ─────────────────────────────────────────────
+
 class _TabBar extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onTap;
@@ -242,9 +233,7 @@ class _TabBar extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-//  Header
-// ─────────────────────────────────────────────
+
 class _Header extends StatelessWidget {
   final String heading, title, subtitle, aum, quarter;
   final int positions;
@@ -276,7 +265,6 @@ class _Header extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // ── Title + subtitle + AUM ────────────────────────
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,7 +310,6 @@ class _Header extends StatelessWidget {
                 ],
               ),
             ),
-            // ── Largest card ─────────────────────────────────
             if (largestItem != null)
               Padding(
                 padding: const EdgeInsets.only(left: 12),
@@ -532,9 +519,7 @@ class _WorldMap extends StatelessWidget {
     return result;
   }
 
-  /// Build a color map for SMapWorldColors from the holdings.
-  /// Countries are tinted amber; intensity scales with allocation.
-  /// All other countries get the dim background colour.
+
   Map<String, Color> _buildColorMap() {
     if (allItems.isEmpty) return {};
 
@@ -564,7 +549,6 @@ class _WorldMap extends StatelessWidget {
     };
   }
 
-  /// Lerp from a dim amber to bright amber based on relative allocation size.
   Color _allocationColor(
     double pct,
     double maxPct,
@@ -589,7 +573,6 @@ class _WorldMap extends StatelessWidget {
 
     return Stack(
       children: [
-        // ── Map background ───────────────────────────────────────────────
         Container(
           height: 220,
           decoration: BoxDecoration(
