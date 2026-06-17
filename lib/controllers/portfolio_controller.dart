@@ -12,9 +12,13 @@ class PortfolioController extends GetxController {
   Map<String, double> marketValueByAssetClass = <String, double>{};
   Map<String, double> allocationByAssetClass = <String, double>{};
   List<AllocationItem> regionItems = [];
+  List<AllocationItem> regionChartData = [];
   List<AllocationItem> classItems = [];
+  List<AllocationItem> classChartData = [];
   List<AllocationItem> currencyItems = [];
+  List<AllocationItem> currencyChartData = [];
   List<AllocationItem> sectorItems = [];
+  List<AllocationItem> sectorChartData = [];
   Map<String, String> countryIsoMap = {};
 
   @override
@@ -34,9 +38,7 @@ class PortfolioController extends GetxController {
         'assets/country_iso.json',
       );
       final Map<String, dynamic> data = jsonDecode(jsonString2);
-      countryIsoMap = data.map(
-        (key, value) => MapEntry(key, value.toString()),
-      );
+      countryIsoMap = data.map((key, value) => MapEntry(key, value.toString()));
 
       final rawJson = jsonDecode(jsonString);
 
@@ -50,6 +52,15 @@ class PortfolioController extends GetxController {
 
   // ─── Core calculations ───────────────────────────────────────────────────────
   void _runCalculations() {
+    List<AllocationItem> r1 = [];
+    List<AllocationItem> r2 = [];
+    List<AllocationItem> c1 = [];
+    List<AllocationItem> c2 = [];
+    List<AllocationItem> x1 = [];
+    List<AllocationItem> x2 = [];
+    List<AllocationItem> b1 = [];
+    List<AllocationItem> b2 = [];
+
     final data = portfolioData.value;
     if (data == null) return;
 
@@ -63,10 +74,21 @@ class PortfolioController extends GetxController {
       totalPortfolioValue,
     );
 
-    regionItems = _buildRegionItems(data.holdings);
-    classItems = _buildClassItems(data.holdings);
-    currencyItems = _buildCurrencyItems(data.holdings);
-    sectorItems = _buildSectorItems(data.holdings);
+    (r1, r2) = _buildRegionItems(data.holdings);
+    regionItems = r1;
+    regionChartData = r2;
+
+    (c1, c2) = _buildClassItems(data.holdings);
+
+    classItems = c1;
+    classChartData = c2;
+    (x1, x2) = _buildCurrencyItems(data.holdings);
+    currencyItems = x1;
+    currencyChartData = x2;
+
+    (b1, b2) = _buildSectorItems(data.holdings);
+    sectorItems = b1;
+    sectorChartData = b2;
 
     update();
   }
@@ -94,7 +116,9 @@ class PortfolioController extends GetxController {
   }
 
   // ─── Region ──────────────────────────────────────────────────────────────────
-  List<AllocationItem> _buildRegionItems(List<PortfolioHolding> holdings) {
+  (List<AllocationItem>, List<AllocationItem>) _buildRegionItems(
+    List<PortfolioHolding> holdings,
+  ) {
     // Aggregate by country
     final mvByCountry = <String, double>{};
     final metaByCountry = <String, PortfolioHolding>{};
@@ -113,7 +137,7 @@ class PortfolioController extends GetxController {
       totalPortfolioValue,
       code: (k) => countryIsoMap[k.toUpperCase()] ?? '',
       name: (k) => k,
-      subLabel: (k) =>k,
+      subLabel: (k) => k,
       filterGroup: (k) => k,
     );
   }
@@ -127,7 +151,9 @@ class PortfolioController extends GetxController {
       _applyFilter(regionItems, regionGroupKey);
 
   // ─── Asset Class ─────────────────────────────────────────────────────────────
-  List<AllocationItem> _buildClassItems(List<PortfolioHolding> holdings) {
+  (List<AllocationItem>, List<AllocationItem>) _buildClassItems(
+    List<PortfolioHolding> holdings,
+  ) {
     final mvByClass = <String, double>{};
     final metaByClass = <String, PortfolioHolding>{};
     final holdingsByClass = <String, List<PortfolioHolding>>{};
@@ -168,10 +194,12 @@ class PortfolioController extends GetxController {
 
   /// The dominant (highest allocation) asset class.
   AllocationItem? getDominantClass() =>
-      classItems.isNotEmpty ? classItems.first : null;
+      classChartData.isNotEmpty ? classChartData.first : null;
 
   // ─── Currency ────────────────────────────────────────────────────────────────
-  List<AllocationItem> _buildCurrencyItems(List<PortfolioHolding> holdings) {
+  (List<AllocationItem>, List<AllocationItem>) _buildCurrencyItems(
+    List<PortfolioHolding> holdings,
+  ) {
     final mvByCurrency = <String, double>{};
     final metaByCurrency = <String, PortfolioHolding>{};
     final holdingsByCurrency = <String, List<PortfolioHolding>>{};
@@ -186,7 +214,7 @@ class PortfolioController extends GetxController {
       mvByCurrency,
       totalPortfolioValue,
       code: (k) => countryIsoMap[k.toUpperCase()] ?? '',
-      name: (k) =>k,
+      name: (k) => k,
       subLabel: (k) => k,
       filterGroup: (k) => k,
     );
@@ -201,7 +229,9 @@ class PortfolioController extends GetxController {
       _applyFilter(currencyItems, currencyGroupKey);
 
   // ─── Sector ──────────────────────────────────────────────────────────────────
-  List<AllocationItem> _buildSectorItems(List<PortfolioHolding> holdings) {
+  (List<AllocationItem>, List<AllocationItem>) _buildSectorItems(
+    List<PortfolioHolding> holdings,
+  ) {
     final mvBySector = <String, double>{};
     final metaBySector = <String, PortfolioHolding>{};
     final holdingsBySector = <String, List<PortfolioHolding>>{};
@@ -224,9 +254,21 @@ class PortfolioController extends GetxController {
       code: (k) => countryIsoMap[k.toUpperCase()] ?? '',
       name: (k) => k,
       subLabel: (k) => k,
-      filterGroup: (k) =>
-          k,
+      filterGroup: (k) => k,
     );
+  }
+
+  List<AllocationItem> getChartData(String chartType){
+    switch (chartType.toLowerCase()){
+      case 'donut' :
+      return classChartData;
+      case 'bar':
+      return currencyChartData;
+      case 'treemap':
+      return sectorChartData;
+      default:
+      return regionChartData;
+    }
   }
 
   String getSecurityType(String securityTypeName) {
@@ -244,7 +286,7 @@ class PortfolioController extends GetxController {
   // ─── Generic helpers ─────────────────────────────────────────────────────────
 
   /// Converts a [mvMap] (key → market value) into a sorted list of [AllocationItem].
-  List<AllocationItem> _toAllocationItems(
+  (List<AllocationItem>, List<AllocationItem>) _toAllocationItems(
     Map<String, List<PortfolioHolding>> holdingsByKey,
     Map<String, double> mvMap,
     double total, {
@@ -253,27 +295,41 @@ class PortfolioController extends GetxController {
     required String Function(String key) subLabel,
     required String Function(String key) filterGroup,
   }) {
-     final items = <AllocationItem>[];
+    final items = <AllocationItem>[];
 
-  holdingsByKey.forEach((key, holdings) {
-    final group = filterGroup(key);
-    for (final h in holdings) {
-      final pct = total == 0 ? 0.0 : (h.marketValue / total) * 100;
-      items.add(
-        AllocationItem(
-          code: code(h.countryName),
-          name: name(h.fullSecurityName),
-          subLabel: subLabel(h.securitySymbol),
-          allocationPct: pct,
-          marketValue: h.marketValue,
-          filterGroup: group,
-        ),
+    holdingsByKey.forEach((key, holdings) {
+      final group = filterGroup(key);
+      for (final h in holdings) {
+        final pct = total == 0 ? 0.0 : (h.marketValue / total) * 100;
+        items.add(
+          AllocationItem(
+            code: code(h.countryName),
+            name: name(h.fullSecurityName),
+            subLabel: subLabel(h.securitySymbol),
+            allocationPct: pct,
+            marketValue: h.marketValue,
+            filterGroup: group,
+          ),
+        );
+      }
+    });
+
+    items.sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
+    
+    // group by keys for chart (all) data
+    final allocations = _toAllocations(mvMap, total);
+    final items2 = mvMap.keys.map((k) {
+      return AllocationItem(
+        code: code(k),
+        name: k,
+        subLabel: subLabel(k),
+        allocationPct: allocations[k] ?? 0.0,
+        marketValue: mvMap[k] ?? 0.0,
+        filterGroup: filterGroup(k),
       );
-    }
-  });
+    }).toList()..sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
 
-  items.sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
-  return items;
+    return (items, items2);
   }
 
   /// Builds the filter pill list from [items].
@@ -294,7 +350,12 @@ class PortfolioController extends GetxController {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return [
-      FilterGroup(selected: true, label: labelAll, allocationPct: 100.0, groupKey: 'all'),
+      FilterGroup(
+        selected: true,
+        label: labelAll,
+        allocationPct: 100.0,
+        groupKey: 'all',
+      ),
       ...sortedGroups.map(
         (e) =>
             FilterGroup(label: e.key, allocationPct: e.value, groupKey: e.key),

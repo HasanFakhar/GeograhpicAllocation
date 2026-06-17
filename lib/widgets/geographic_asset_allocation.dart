@@ -138,6 +138,7 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
         final filteredItems = _items(c);
         final filterGroups = _filters(c);
         final chartType = _tabChartTypes[_tabIndex];
+        final chartData = c.getChartData(chartType);
 
         return Scaffold(
           backgroundColor: kBg,
@@ -156,13 +157,13 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
                     aum: c.formattedTotalValue,
                     positions: allItems.length,
                     quarter: c.reportQuarter,
-                    largestItem: allItems.isNotEmpty ? allItems.first : null,
+                    largestItem: chartData.isNotEmpty ? chartData.first : null,
                   ),
                   const SizedBox(height: 30),
                   _ChartArea(
                     chartType: chartType,
                     selectedGroup: _filter,
-                    allItems: allItems,
+                    allItems: chartData,
                     dominant: chartType == 'donut'
                         ? c.getDominantClass()
                         : null,
@@ -349,7 +350,7 @@ class _Header extends StatelessWidget {
                               ),
                             ),
                             TextSpan(
-                              text: ' ${largestItem!.name}',
+                              text: ' ${largestItem!.filterGroup}',
                               style: const TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFFC8BFB0),
@@ -706,7 +707,7 @@ class _DonutChart extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    dominant!.name,
+                    dominant!.filterGroup,
                     style: const TextStyle(fontSize: 11, color: kMuted),
                   ),
                 ],
@@ -772,7 +773,7 @@ class _DonutPainter extends CustomPainter {
         tp.paint(canvas, Offset(lx - tp.width / 2, ly + dy - tp.height / 2));
       }
 
-      drawLabel(item.code, -8, 10);
+      drawLabel(item.filterGroup, -8, 10);
       drawLabel('${item.allocationPct.toStringAsFixed(0)}%', 4, 9);
 
       startAngle += sweep;
@@ -867,7 +868,7 @@ class _BarChartPainter extends CustomPainter {
       );
 
       // Currency symbol above bar (look up by ISO code)
-      final sym = kCurrencySymbols[item.code] ?? '';
+      final sym = kCurrencySymbols[item.filterGroup] ?? '';
       if (sym.isNotEmpty) {
         final symTp = TextPainter(
           text: TextSpan(
@@ -1171,7 +1172,7 @@ class _HoldingsSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'HOLDINGS',
+              'POSITIONS',
               style: TextStyle(
                 fontSize: 11,
                 letterSpacing: 1.2,
