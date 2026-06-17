@@ -27,12 +27,16 @@ class PortfolioHolding {
   final String localCurrencyISOCode;
   final double marketValue;
   final String sector;
+  final double quantity;
   final String securityTypeName;
+  final String securitySymbol;
 
   PortfolioHolding({
     required this.sector,
+    required this.quantity,
     required this.securityTypeName,
     required this.countryName,
+    required this.securitySymbol,
     required this.fullSecurityName,
     required this.localCurrencyName,
     required this.localCurrencyCode,
@@ -47,7 +51,9 @@ class PortfolioHolding {
 
   factory PortfolioHolding.fromJson(Map<String, dynamic> json) {
     return PortfolioHolding(
+      quantity: (json['Quantity'] as num?)?.toDouble() ?? 0.0,
       fullSecurityName: json['FullSecurityName'] ?? '',
+      securitySymbol: json['SecuritySymbol'] ?? '',
       securityTypeName: json['SecurityTypeName'] ?? '',
       localCurrencyCode: json['LocalCurrencyCode'].toString().toUpperCase() ,
       sector: json['IndSector'] ?? '',
@@ -77,7 +83,7 @@ class PortfolioSummary {
 }
 
 class AllocationItem {
-  final String code;
+  final String code; 
   final String name;
   final String subLabel;
   final double allocationPct;

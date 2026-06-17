@@ -98,19 +98,23 @@ class PortfolioController extends GetxController {
     // Aggregate by country
     final mvByCountry = <String, double>{};
     final metaByCountry = <String, PortfolioHolding>{};
+    final holdingsbyCountry = <String, List<PortfolioHolding>>{};
+
     for (final h in holdings) {
       if (h.marketValue == 0.0) continue;
       final key = h.countryName;
       mvByCountry[key] = (mvByCountry[key] ?? 0.0) + h.marketValue;
       metaByCountry.putIfAbsent(key, () => h);
+      holdingsbyCountry.putIfAbsent(key, () => []).add(h);
     }
     return _toAllocationItems(
+      holdingsbyCountry,
       mvByCountry,
       totalPortfolioValue,
-      code: (k) => countryIsoMap[metaByCountry[k]!.countryName.toUpperCase()] ?? '',
-      name: (k) => metaByCountry[k]!.countryName,
-      subLabel: (k) => metaByCountry[k]!.countryName,
-      filterGroup: (k) => metaByCountry[k]!.countryName,
+      code: (k) => countryIsoMap[k.toUpperCase()] ?? '',
+      name: (k) => k,
+      subLabel: (k) =>k,
+      filterGroup: (k) => k,
     );
   }
 
@@ -126,15 +130,18 @@ class PortfolioController extends GetxController {
   List<AllocationItem> _buildClassItems(List<PortfolioHolding> holdings) {
     final mvByClass = <String, double>{};
     final metaByClass = <String, PortfolioHolding>{};
+    final holdingsByClass = <String, List<PortfolioHolding>>{};
     for (final h in holdings) {
       mvByClass[h.assetClassName] =
           (mvByClass[h.assetClassName] ?? 0.0) + h.marketValue;
       metaByClass.putIfAbsent(h.assetClassName, () => h);
+      holdingsByClass.putIfAbsent(h.assetClassName, () => []).add(h);
     }
     return _toAllocationItems(
+      holdingsByClass,
       mvByClass,
       totalPortfolioValue,
-      code: (k) => getAssetClassCode(k),
+      code: (k) => countryIsoMap[k.toUpperCase()] ?? '',
       name: (k) => k,
       subLabel: (k) => k,
       filterGroup: (k) => k,
@@ -167,18 +174,21 @@ class PortfolioController extends GetxController {
   List<AllocationItem> _buildCurrencyItems(List<PortfolioHolding> holdings) {
     final mvByCurrency = <String, double>{};
     final metaByCurrency = <String, PortfolioHolding>{};
+    final holdingsByCurrency = <String, List<PortfolioHolding>>{};
     for (final h in holdings) {
       final key = h.localCurrencyISOCode;
       mvByCurrency[key] = (mvByCurrency[key] ?? 0.0) + h.marketValue;
       metaByCurrency.putIfAbsent(key, () => h);
+      holdingsByCurrency.putIfAbsent(key, () => []).add(h);
     }
     return _toAllocationItems(
+      holdingsByCurrency,
       mvByCurrency,
       totalPortfolioValue,
-      code: (k) => k,
-      name: (k) => metaByCurrency[k]!.localCurrencyName,
-      subLabel: (k) => metaByCurrency[k]!.assetClassName,
-      filterGroup: (k) => metaByCurrency[k]!.localCurrencyName,
+      code: (k) => countryIsoMap[k.toUpperCase()] ?? '',
+      name: (k) =>k,
+      subLabel: (k) => k,
+      filterGroup: (k) => k,
     );
   }
 
@@ -194,6 +204,7 @@ class PortfolioController extends GetxController {
   List<AllocationItem> _buildSectorItems(List<PortfolioHolding> holdings) {
     final mvBySector = <String, double>{};
     final metaBySector = <String, PortfolioHolding>{};
+    final holdingsBySector = <String, List<PortfolioHolding>>{};
     for (final h in holdings) {
       if (h.marketValue == 0.0) continue;
       if (h.sector.isEmpty) {
@@ -203,16 +214,18 @@ class PortfolioController extends GetxController {
         // skip holdings with no sector info
         mvBySector[h.sector] = (mvBySector[h.sector] ?? 0.0) + h.marketValue;
         metaBySector.putIfAbsent(h.sector, () => h);
+        holdingsBySector.putIfAbsent(h.sector, () => []).add(h);
       }
     }
     return _toAllocationItems(
+      holdingsBySector,
       mvBySector,
       totalPortfolioValue,
-      code: (k) => '',
+      code: (k) => countryIsoMap[k.toUpperCase()] ?? '',
       name: (k) => k,
-      subLabel: (k) => getSecurityType(metaBySector[k]!.securityTypeName),
+      subLabel: (k) => k,
       filterGroup: (k) =>
-          metaBySector[k]!.sector.isNotEmpty ? metaBySector[k]!.sector : 'N/A',
+          k,
     );
   }
 
@@ -232,6 +245,7 @@ class PortfolioController extends GetxController {
 
   /// Converts a [mvMap] (key → market value) into a sorted list of [AllocationItem].
   List<AllocationItem> _toAllocationItems(
+    Map<String, List<PortfolioHolding>> holdingsByKey,
     Map<String, double> mvMap,
     double total, {
     required String Function(String key) code,
@@ -239,18 +253,27 @@ class PortfolioController extends GetxController {
     required String Function(String key) subLabel,
     required String Function(String key) filterGroup,
   }) {
-    final allocations = _toAllocations(mvMap, total);
-    final items = mvMap.keys.map((k) {
-      return AllocationItem(
-        code: code(k),
-        name: name(k),
-        subLabel: subLabel(k),
-        allocationPct: allocations[k] ?? 0.0,
-        marketValue: mvMap[k] ?? 0.0,
-        filterGroup: filterGroup(k),
+     final items = <AllocationItem>[];
+
+  holdingsByKey.forEach((key, holdings) {
+    final group = filterGroup(key);
+    for (final h in holdings) {
+      final pct = total == 0 ? 0.0 : (h.marketValue / total) * 100;
+      items.add(
+        AllocationItem(
+          code: code(h.countryName),
+          name: name(h.fullSecurityName),
+          subLabel: subLabel(h.securitySymbol),
+          allocationPct: pct,
+          marketValue: h.marketValue,
+          filterGroup: group,
+        ),
       );
-    }).toList()..sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
-    return items;
+    }
+  });
+
+  items.sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
+  return items;
   }
 
   /// Builds the filter pill list from [items].
