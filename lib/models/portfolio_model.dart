@@ -86,6 +86,7 @@ class AllocationItem {
   final String code; 
   final String name;
   final String subLabel;
+  final double quantity;
   final double allocationPct;
   final double marketValue;
   final String filterGroup;
@@ -97,6 +98,7 @@ class AllocationItem {
     required this.allocationPct,
     required this.marketValue,
     required this.filterGroup,
+    required this.quantity,
   });
 }
 

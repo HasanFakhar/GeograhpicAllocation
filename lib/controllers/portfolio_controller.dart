@@ -309,6 +309,7 @@ class PortfolioController extends GetxController {
             allocationPct: pct,
             marketValue: h.marketValue,
             filterGroup: group,
+            quantity: h.quantity.roundToDouble()
           ),
         );
       }
@@ -326,6 +327,7 @@ class PortfolioController extends GetxController {
         allocationPct: allocations[k] ?? 0.0,
         marketValue: mvMap[k] ?? 0.0,
         filterGroup: filterGroup(k),
+        quantity: 0,
       );
     }).toList()..sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
 

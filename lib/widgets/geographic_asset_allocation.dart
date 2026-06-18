@@ -508,6 +508,7 @@ class _WorldMap extends StatelessWidget {
               name: '',
               subLabel: '',
               marketValue: 0,
+              quantity: 0,
             ),
           );
         }
@@ -1261,7 +1262,7 @@ class _HoldingsSection extends StatelessWidget {
                       text: TextSpan(
                         children: [
                           TextSpan(
-                            text: h.allocationPct.toStringAsFixed(1),
+                            text: h.quantity.toStringAsFixed(1),
                             style: const TextStyle(
                               fontSize: 15,
                               color: Color(0xFFC8BFB0),
