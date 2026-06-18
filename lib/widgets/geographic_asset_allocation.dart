@@ -72,7 +72,18 @@ const Map<String, String> kCurrencySymbols = {
   'AUD': 'A\$',
   'CAD': 'C\$',
 };
-
+const Map<String, String> countryToCurrency = {
+  'gb': 'GBP',
+  'eu': 'EUR',
+  'us': 'USD',
+  'jp': 'JPY',
+  'no': 'NOK',
+  'ch': 'CHF',
+  'ca': 'CAD',
+  'au': 'AUD',
+  'cn': 'CNY',
+  'in': 'INR',
+};
 
 class PortfolioAllocationWidget extends StatefulWidget {
   const PortfolioAllocationWidget({super.key});
@@ -1151,13 +1162,38 @@ class _FilterBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  Holdings list  (uses AllocationItem from model)
+//  Holdings list 
 // ─────────────────────────────────────────────
 class _HoldingsSection extends StatelessWidget {
   final List<AllocationItem> holdings;
   final List<AllocationItem> allHoldings; // for colour indexing
 
   const _HoldingsSection({required this.holdings, required this.allHoldings});
+
+  String _formatCurrency(num value, String isoCode) {
+    final isNegative = value < 0;
+    final abs = value.abs();
+    String formatted;
+    String symbol='';
+    if (abs >= 1000000) {
+      formatted = '${(abs / 1000000).toStringAsFixed(2)}M';
+    } else if (abs >= 1000) {
+      formatted = '${(abs / 1000).toStringAsFixed(1)}K';
+    } else {
+      formatted = abs.toStringAsFixed(2);
+    }
+    symbol=kCurrencySymbols[countryToCurrency[isoCode.toLowerCase()]] ?? '\$'  ;
+
+    return '${isNegative ? '-' : ''}$symbol$formatted';
+  }
+
+  // Quantity formatter: trims trailing zeros, keeps things readable
+  String _formatQuantity(num value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(2);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1177,16 +1213,20 @@ class _HoldingsSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 letterSpacing: 1.2,
+                fontWeight: FontWeight.w600,
                 color: Color(0xFF6A6058),
               ),
             ),
             Text(
               '${holdings.length} positions',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF6A6058)),
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF6A6058),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         ...holdings.map((h) {
           final idx = allHoldings.indexOf(h);
           final color = dotColor(idx);
@@ -1195,8 +1235,9 @@ class _HoldingsSection extends StatelessWidget {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Colour dot
                     Container(
@@ -1205,74 +1246,132 @@ class _HoldingsSection extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withOpacity(0.35),
+                            blurRadius: 4,
+                            spreadRadius: 0.5,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    // Short code
-                    SizedBox(
-                      width: 36,
-                      child: Text(
-                        h.code,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF7A7060),
-                        ),
-                      ),
-                    ),
-                    // Name + sub-label
+                    const SizedBox(width: 10),
+
+                    // Name + sub-label + bar (the "identity" column)
                     Expanded(
-                      flex: 3,
+                      flex: 5,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            h.name,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: kText,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  h.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: kText,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                h.code,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF9A9080),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             h.subLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 11,
                               color: Color(0xFF7A7060),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: barFrac,
+                              backgroundColor: kDivider,
+                              valueColor: AlwaysStoppedAnimation<Color>(color),
+                              minHeight: 4,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Progress bar
+
+                    const SizedBox(width: 20),
+
+                    // Quantity
                     Expanded(
-                      flex: 2,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          value: barFrac,
-                          backgroundColor: kDivider,
-                          valueColor: AlwaysStoppedAnimation<Color>(color),
-                          minHeight: 4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Percentage
-                    RichText(
-                      text: TextSpan(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          TextSpan(
-                            text: h.quantity.toStringAsFixed(1),
+                          Text(
+                            _formatQuantity(h.quantity),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFFC8BFB0),
+                              fontSize: 14,
+                              color: kText,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const TextSpan(
-                            text: '%',
+                          const SizedBox(height: 2),
+                          const Text(
+                            'qty',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF7A7060),
+                              fontSize: 10,
+                              letterSpacing: 0.4,
+                              color: Color(0xFF9A9080),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Market value
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            _formatCurrency(h.marketValue,h.code),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: kText,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'value',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10,
+                              letterSpacing: 0.4,
+                              color: Color(0xFF9A9080),
                             ),
                           ),
                         ],
