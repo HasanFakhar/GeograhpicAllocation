@@ -3,6 +3,39 @@ import 'package:get/get.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 
+/// The four dimensions a holding can be grouped by.
+/// Shared between the simple tabs (Region/Class/Currency/Sector) and the
+/// Cross-section tab's SLICE × BY pickers.
+enum Dimension { assetClass, region, currency, sector }
+
+const Map<Dimension, String> dimensionLabel = {
+  Dimension.assetClass: 'Class',
+  Dimension.region: 'Region',
+  Dimension.currency: 'Currency',
+  Dimension.sector: 'Sector',
+};
+
+/// One row in the cross-section SLICE list: a primary-dimension group
+/// (e.g. "Public Equities") with its share of the whole portfolio, plus
+/// — once expanded — its breakdown across the BY dimension.
+class CrossSectionRow {
+  final String key; // raw group key, e.g. 'Equity'
+  final String label; // display label, e.g. 'Public Equities'
+  final double allocationPct; // % of WHOLE portfolio
+  final double marketValue;
+  final int positionCount;
+  final List<AllocationItem> byBreakdown; // this slice's split across BY dimension
+
+  CrossSectionRow({
+    required this.key,
+    required this.label,
+    required this.allocationPct,
+    required this.marketValue,
+    required this.positionCount,
+    required this.byBreakdown,
+  });
+}
+
 class PortfolioController extends GetxController {
   // static const String portfolioApiUrl = 'https://your-api.example.com/portfolio'; // placeholder URL
   // static const String mandateApiUrl = 'https://your-api.example.com/mandates'; // placeholder URL
@@ -309,7 +342,8 @@ class PortfolioController extends GetxController {
             allocationPct: pct,
             marketValue: h.marketValue,
             filterGroup: group,
-            quantity: h.quantity.roundToDouble()
+            quantity: h.quantity.roundToDouble(),
+            currencyCode: h.localCurrencyISOCode
           ),
         );
       }
@@ -402,5 +436,182 @@ class PortfolioController extends GetxController {
     } catch (_) {
       return date;
     }
+  }
+
+  // ─── Cross-section (SLICE × BY) ───────────────────────────────────────────────
+  // Lets the user pick two dimensions at once, e.g. "Class, by Region":
+  // SLICE picks the primary grouping shown as rows; BY picks the secondary
+  // grouping used both for the chip filter row and each row's expanded
+  // breakdown.
+
+  /// Extracts the raw grouping key for [dim] from a single holding.
+  String _keyFor(Dimension dim, PortfolioHolding h) {
+    switch (dim) {
+      case Dimension.assetClass:
+        return h.assetClassName;
+      case Dimension.region:
+        return h.countryName;
+      case Dimension.currency:
+        return h.localCurrencyISOCode;
+      case Dimension.sector:
+        return h.sector.isEmpty ? 'N/A' : h.sector;
+    }
+  }
+
+  /// Display label for a raw key under [dim] (currently identity — kept as a
+  /// seam in case dimensions need prettified labels later, e.g. ISO → flag name).
+  String _labelFor(Dimension dim, String key) => key;
+
+  /// Country/region ISO code lookup, reused for chip + row "code" badges.
+  String _codeFor(Dimension dim, String key) {
+      var x = dim == Dimension.region ? (countryIsoMap[key.toUpperCase()] ?? '') : '';
+      print('code for $key');
+      return x;
+  }
+
+  /// Top-line chips for the BY dimension — used to filter the cross-section
+  /// view down to one BY-group at a time. 'all' is implicit (no chip needed
+  /// since SLICE/BY pickers already sit above), so this returns only the
+  /// real groups, sorted by allocation, largest first.
+  List<FilterGroup> getCrossSectionByChips(Dimension sliceDim, Dimension byDim) {
+    final data = portfolioData.value;
+    if (data == null) return [];
+
+    final mvByKey = <String, double>{};
+    for (final h in data.holdings) {
+      if (h.marketValue == 0.0) continue;
+      final k = _keyFor(byDim, h);
+      mvByKey[k] = (mvByKey[k] ?? 0.0) + h.marketValue;
+    }
+
+    final entries = mvByKey.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return entries.map((e) {
+      final pct = totalPortfolioValue == 0 ? 0.0 : (e.value / totalPortfolioValue) * 100;
+      return FilterGroup(
+        label: _labelFor(byDim, e.key),
+        allocationPct: pct,
+        groupKey: e.key,
+      );
+    }).toList();
+  }
+
+  /// Builds the SLICE rows for the cross-section view.
+  ///
+  /// Each row's [CrossSectionRow.allocationPct] is always the group's share
+  /// of the WHOLE portfolio (independent of any BY-chip filter), so the
+  /// headline bars stay stable as the user explores. [byBreakdown] is that
+  /// same slice's holdings split across the BY dimension, recomputed against
+  /// [byFilterKey] when set ('all' or null = no chip filter applied) — this
+  /// is what renders inside a row once it's expanded.
+  List<CrossSectionRow> getCrossSectionRows(
+    Dimension sliceDim,
+    Dimension byDim, {
+    String? byFilterKey,
+  }) {
+    final data = portfolioData.value;
+    if (data == null) return [];
+
+    // Restrict to holdings matching the BY chip filter, if any.
+    final relevantHoldings = (byFilterKey == null || byFilterKey == 'all')
+        ? data.holdings
+        : data.holdings
+            .where((h) => _keyFor(byDim, h) == byFilterKey)
+            .toList();
+
+    // Group the (filter-restricted) holdings by the SLICE dimension.
+    final holdingsBySlice = <String, List<PortfolioHolding>>{};
+    for (final h in relevantHoldings) {
+      if (h.marketValue == 0.0) continue;
+      holdingsBySlice.putIfAbsent(_keyFor(sliceDim, h), () => []).add(h);
+    }
+
+    final rows = <CrossSectionRow>[];
+    holdingsBySlice.forEach((sliceKey, sliceHoldings) {
+      final sliceMv = sliceHoldings.fold(0.0, (s, h) => s + h.marketValue);
+      final pctOfWhole =
+          totalPortfolioValue == 0 ? 0.0 : (sliceMv / totalPortfolioValue) * 100;
+
+      // Breakdown of this slice across the BY dimension (used when expanded).
+      final mvByByKey = <String, double>{};
+      final currencyByKey = <String,String>{};
+      for (final h in sliceHoldings) {
+        final k = _keyFor(byDim, h);
+        mvByByKey[k] = (mvByByKey[k] ?? 0.0) + h.marketValue;
+        currencyByKey[k] = h.localCurrencyISOCode;
+
+      }
+      print(currencyByKey);
+      final byBreakdown = mvByByKey.entries.map((e) {
+        final pctOfSlice = sliceMv == 0 ? 0.0 : (e.value / sliceMv) * 100;
+        return AllocationItem(
+          code: _codeFor(byDim, e.key),
+          name: _labelFor(byDim, e.key),
+          subLabel: dimensionLabel[byDim] ?? '',
+          allocationPct: pctOfSlice,
+          marketValue: e.value,
+          filterGroup: e.key,
+          quantity: 0,
+          currencyCode: currencyByKey[e.key] ?? '',
+        );
+      }).toList()
+        ..sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
+
+      rows.add(CrossSectionRow(
+        key: sliceKey,
+        label: _labelFor(sliceDim, sliceKey),
+        allocationPct: pctOfWhole,
+        marketValue: sliceMv,
+        positionCount: sliceHoldings.length,
+        byBreakdown: byBreakdown,
+      ));
+    });
+
+    rows.sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
+    return rows;
+  }
+
+  /// The positions list for the cross-section view: every underlying
+  /// holding matching the BY chip filter (or everything, if none selected),
+  /// optionally narrowed further to one expanded [sliceFilterKey], sorted
+  /// largest first.
+  List<AllocationItem> getCrossSectionPositions(
+    Dimension sliceDim,
+    Dimension byDim, {
+    String? byFilterKey,
+    String? sliceFilterKey,
+  }) {
+    final data = portfolioData.value;
+    if (data == null) return [];
+
+    Iterable<PortfolioHolding> relevantHoldings = data.holdings;
+    if (byFilterKey != null && byFilterKey != 'all') {
+      relevantHoldings =
+          relevantHoldings.where((h) => _keyFor(byDim, h) == byFilterKey);
+    }
+    if (sliceFilterKey != null) {
+      relevantHoldings =
+          relevantHoldings.where((h) => _keyFor(sliceDim, h) == sliceFilterKey);
+    }
+
+    final items = relevantHoldings.where((h) => h.marketValue != 0.0).map((h) {
+      final pct = totalPortfolioValue == 0
+          ? 0.0
+          : (h.marketValue / totalPortfolioValue) * 100;
+      return AllocationItem(
+        code: _codeFor(Dimension.region, h.countryName),
+        name: h.fullSecurityName,
+        subLabel: h.securitySymbol,
+        allocationPct: pct,
+        marketValue: h.marketValue,
+        filterGroup: _keyFor(sliceDim, h),
+        quantity: h.quantity.roundToDouble(),
+        currencyCode: h.localCurrencyISOCode,
+      );
+    }).toList()
+      ..sort((a, b) => b.allocationPct.compareTo(a.allocationPct));
+
+    return items;
   }
 }

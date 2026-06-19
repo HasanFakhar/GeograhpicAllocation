@@ -5,6 +5,8 @@ import '../controllers/portfolio_controller.dart';
 import '../models/portfolio_model.dart';
 import 'package:countries_world_map/countries_world_map.dart';
 import 'package:countries_world_map/data/maps/world_map.dart';
+import './cross_section.dart';
+import '../utils/format_currency.dart';
 
 // ─────────────────────────────────────────────
 //  Colours
@@ -32,10 +34,9 @@ const List<Color> kDotColors = [
 
 Color dotColor(int idx) => kDotColors[idx % kDotColors.length];
 
+enum _Tab { region, assetClass, currency, sector, cross }
 
-enum _Tab { region, assetClass, currency, sector }
-
-const _tabLabels = ['Region', 'Class', 'Currency', 'Sector'];
+const _tabLabels = ['Region', 'Class', 'Currency', 'Sector', 'Cross'];
 
 const _tabHeading = [
   'GEOGRAPHIC ALLOCATION',
@@ -58,8 +59,7 @@ const _tabsubtitle = [
   'by sector.',
 ];
 
-// 'world' | 'donut' | 'bar' | 'treemap'
-const _tabChartTypes = ['world', 'donut', 'bar', 'treemap'];
+const _tabChartTypes = ['world', 'donut', 'bar', 'treemap', ''];
 
 const Map<String, String> kCurrencySymbols = {
   'GBP': '£',
@@ -71,18 +71,6 @@ const Map<String, String> kCurrencySymbols = {
   'CHF': '₣',
   'AUD': 'A\$',
   'CAD': 'C\$',
-};
-const Map<String, String> countryToCurrency = {
-  'gb': 'GBP',
-  'eu': 'EUR',
-  'us': 'USD',
-  'jp': 'JPY',
-  'no': 'NOK',
-  'ch': 'CHF',
-  'ca': 'CAD',
-  'au': 'AUD',
-  'cn': 'CNY',
-  'in': 'INR',
 };
 
 class PortfolioAllocationWidget extends StatefulWidget {
@@ -104,13 +92,13 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
 
   void _onFilter(String g) => setState(() => _filter = g);
 
-
   List<AllocationItem> _items(PortfolioController c) {
     return switch (_Tab.values[_tabIndex]) {
       _Tab.region => c.getRegionItems(_filter),
       _Tab.assetClass => c.getClassItems(_filter),
       _Tab.currency => c.getCurrencyItems(_filter),
       _Tab.sector => c.getSectorItems(_filter),
+      _Tab.cross => c.getSectorItems(_filter),
     };
   }
 
@@ -121,6 +109,7 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
       _Tab.assetClass => c.getClassItems(),
       _Tab.currency => c.getCurrencyItems(),
       _Tab.sector => c.getSectorItems(),
+      _Tab.cross => c.getSectorItems(),
     };
   }
 
@@ -130,8 +119,11 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
       _Tab.assetClass => c.getClassFilters(),
       _Tab.currency => c.getCurrencyFilters(),
       _Tab.sector => c.getSectorFilters(),
+      _Tab.cross => c.getSectorFilters(),
     };
   }
+
+  bool selectedCrossTab(int tabIndex) => _Tab.values[tabIndex] == _Tab.cross;
 
   @override
   Widget build(BuildContext context) {
@@ -154,44 +146,66 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
         return Scaffold(
           backgroundColor: kBg,
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _TabBar(selected: _tabIndex, onTap: _onTab),
-                  const SizedBox(height: 24),
-                  _Header(
-                    heading: _tabHeading[_tabIndex],
-                    title: _tabtitle[_tabIndex],
-                    subtitle: _tabsubtitle[_tabIndex],
-                    aum: c.formattedTotalValue,
-                    positions: allItems.length,
-                    quarter: c.reportQuarter,
-                    largestItem: chartData.isNotEmpty ? chartData.first : null,
-                  ),
-                  const SizedBox(height: 30),
-                  _ChartArea(
-                    chartType: chartType,
-                    selectedGroup: _filter,
-                    allItems: chartData,
-                    dominant: chartType == 'donut'
-                        ? c.getDominantClass()
-                        : null,
-                  ),
-                  const SizedBox(height: 20),
-                  _FilterBar(
-                    filters: filterGroups,
-                    selected: _filter,
-                    onSelect: _onFilter,
-                  ),
-                  const SizedBox(height: 16),
-                  _HoldingsSection(
-                    holdings: filteredItems,
-                    allHoldings: allItems,
-                  ),
-                ],
-              ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _TabBar(selected: _tabIndex, onTap: _onTab),
+                ),
+
+                Expanded(
+                  child: selectedCrossTab(_tabIndex)
+                      ? const CrossSectionTab()
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _Header(
+                                heading: _tabHeading[_tabIndex],
+                                title: _tabtitle[_tabIndex],
+                                subtitle: _tabsubtitle[_tabIndex],
+                                aum: c.formattedTotalValue,
+                                positions: allItems.length,
+                                quarter: c.reportQuarter,
+                                largestItem: chartData.isNotEmpty
+                                    ? chartData.first
+                                    : null,
+                              ),
+
+                              const SizedBox(height: 30),
+
+                              _ChartArea(
+                                chartType: chartType,
+                                selectedGroup: _filter,
+                                allItems: chartData,
+                                dominant: chartType == 'donut'
+                                    ? c.getDominantClass()
+                                    : null,
+                              ),
+
+                              const SizedBox(height: 20),
+
+                              _FilterBar(
+                                filters: filterGroups,
+                                selected: _filter,
+                                onSelect: _onFilter,
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              _HoldingsSection(
+                                holdings: filteredItems,
+                                allHoldings: allItems,
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
+              ],
             ),
           ),
         );
@@ -199,7 +213,6 @@ class _PortfolioAllocationWidgetState extends State<PortfolioAllocationWidget> {
     );
   }
 }
-
 
 class _TabBar extends StatelessWidget {
   final int selected;
@@ -244,7 +257,6 @@ class _TabBar extends StatelessWidget {
     );
   }
 }
-
 
 class _Header extends StatelessWidget {
   final String heading, title, subtitle, aum, quarter;
@@ -333,7 +345,6 @@ class _Header extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: kSurface,
                     borderRadius: BorderRadius.circular(12),
-                   
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -532,7 +543,6 @@ class _WorldMap extends StatelessWidget {
     return result;
   }
 
-
   Map<String, Color> _buildColorMap() {
     if (allItems.isEmpty) return {};
 
@@ -572,7 +582,6 @@ class _WorldMap extends StatelessWidget {
       return const Color(0xFF2A2A38);
     }
     final t = (pct / maxPct).clamp(0.1, 1.0);
-    print('  pct=$pct maxPct=$maxPct t=$t');
     const dimAmber = Color.fromARGB(255, 61, 46, 35);
     const brightAmber = Color(0xFFFFD580);
     return Color.lerp(dimAmber, brightAmber, t)!;
@@ -580,9 +589,7 @@ class _WorldMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final largest = allItems.isNotEmpty ? allItems.first : null;
     final colorMap = _buildColorMap();
-    print('Color map: $colorMap');
 
     return Stack(
       children: [
@@ -602,55 +609,6 @@ class _WorldMap extends StatelessWidget {
             ),
           ),
         ),
-
-        // // ── "Largest" highlight card ──────────────────────────────────────
-        // if (largest != null)
-        //   Positioned(
-        //     top: 10,
-        //     right: 10,
-        //     child: Container(
-        //       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        //       decoration: BoxDecoration(
-        //         color: kSurface.withOpacity(0.92),
-        //         borderRadius: BorderRadius.circular(12),
-        //       ),
-        //       child: Column(
-        //         crossAxisAlignment: CrossAxisAlignment.start,
-        //         children: [
-        //           const Text(
-        //             'LARGEST',
-        //             style: TextStyle(
-        //               fontSize: 10,
-        //               letterSpacing: 1.2,
-        //               color: Color(0xFF6A6058),
-        //             ),
-        //           ),
-        //           const SizedBox(height: 2),
-        //           RichText(
-        //             text: TextSpan(
-        //               children: [
-        //                 TextSpan(
-        //                   text: '${largest.allocationPct.toStringAsFixed(0)}%',
-        //                   style: const TextStyle(
-        //                     fontSize: 26,
-        //                     fontWeight: FontWeight.w600,
-        //                     color: kAmber2,
-        //                   ),
-        //                 ),
-        //                 TextSpan(
-        //                   text: ' ${largest.name}',
-        //                   style: const TextStyle(
-        //                     fontSize: 14,
-        //                     color: Color(0xFFC8BFB0),
-        //                   ),
-        //                 ),
-        //               ],
-        //             ),
-        //           ),
-        //         ],
-        //       ),
-        //     ),
-        //   ),
       ],
     );
   }
@@ -986,7 +944,6 @@ class _Treemap extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // Bottom row: name + pct
                       Positioned(
                         bottom: 0,
                         left: 0,
@@ -1162,30 +1119,13 @@ class _FilterBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  Holdings list 
+//  Holdings list
 // ─────────────────────────────────────────────
 class _HoldingsSection extends StatelessWidget {
   final List<AllocationItem> holdings;
   final List<AllocationItem> allHoldings; // for colour indexing
 
   const _HoldingsSection({required this.holdings, required this.allHoldings});
-
-  String _formatCurrency(num value, String isoCode) {
-    final isNegative = value < 0;
-    final abs = value.abs();
-    String formatted;
-    String symbol='';
-    if (abs >= 1000000) {
-      formatted = '${(abs / 1000000).toStringAsFixed(2)}M';
-    } else if (abs >= 1000) {
-      formatted = '${(abs / 1000).toStringAsFixed(1)}K';
-    } else {
-      formatted = abs.toStringAsFixed(2);
-    }
-    symbol=kCurrencySymbols[countryToCurrency[isoCode.toLowerCase()]] ?? '\$'  ;
-
-    return '${isNegative ? '-' : ''}$symbol$formatted';
-  }
 
   // Quantity formatter: trims trailing zeros, keeps things readable
   String _formatQuantity(num value) {
@@ -1219,10 +1159,7 @@ class _HoldingsSection extends StatelessWidget {
             ),
             Text(
               '${holdings.length} positions',
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF6A6058),
-              ),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF6A6058)),
             ),
           ],
         ),
@@ -1278,16 +1215,16 @@ class _HoldingsSection extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                h.code,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF9A9080),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
+                              // Text(
+                              //   h.code,
+                              //   maxLines: 1,
+                              //   overflow: TextOverflow.ellipsis,
+                              //   style: const TextStyle(
+                              //     fontSize: 11,
+                              //     color: Color(0xFF9A9080),
+                              //     fontWeight: FontWeight.w500,
+                              //   ),
+                              // ),
                             ],
                           ),
                           const SizedBox(height: 2),
@@ -1334,7 +1271,7 @@ class _HoldingsSection extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           const Text(
-                            'qty',
+                            'units',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -1354,7 +1291,7 @@ class _HoldingsSection extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            _formatCurrency(h.marketValue,h.code),
+                            formatCurrency(h.marketValue, h.currencyCode),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -1380,7 +1317,7 @@ class _HoldingsSection extends StatelessWidget {
                   ],
                 ),
               ),
-              const Divider(height: 0, thickness: 0.5, color: kDivider),
+              const Divider(height: 0, thickness: 1, color: kDivider),
             ],
           );
         }),

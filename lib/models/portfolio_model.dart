@@ -55,7 +55,7 @@ class PortfolioHolding {
       fullSecurityName: json['FullSecurityName'] ?? '',
       securitySymbol: json['SecuritySymbol'] ?? '',
       securityTypeName: json['SecurityTypeName'] ?? '',
-      localCurrencyCode: json['LocalCurrencyCode'].toString().toUpperCase() ,
+      localCurrencyCode: json['LocalCurrencyCode'].toString().toUpperCase(),
       sector: json['IndSector'] ?? '',
       countryName: json['CountryName'] ?? '',
       localCurrencyName: json['LocalCurrencyName'] ?? '',
@@ -83,13 +83,14 @@ class PortfolioSummary {
 }
 
 class AllocationItem {
-  final String code; 
+  final String code;
   final String name;
   final String subLabel;
   final double quantity;
   final double allocationPct;
   final double marketValue;
   final String filterGroup;
+  final String? currencyCode;
 
   const AllocationItem({
     required this.code,
@@ -99,6 +100,7 @@ class AllocationItem {
     required this.marketValue,
     required this.filterGroup,
     required this.quantity,
+    this.currencyCode,
   });
 }
 
@@ -106,9 +108,9 @@ class FilterGroup {
   final String label;
   final double allocationPct;
   final String groupKey;
-  bool selected ;
+  bool selected;
 
-   FilterGroup({
+  FilterGroup({
     this.selected = false,
     required this.label,
     required this.allocationPct,
